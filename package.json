@@ -1,0 +1,19 @@
+{
+  "name": "voxel-engine",
+  "version": "1.0.0",
+  "description": "",
+  "scripts": {
+    "dev": "esbuild src/engine.ts src/generators/worldGenerator/worldGenerator.ts --watch  --bundle --minify --sourcemap --outdir=dist/js --target=es2020"
+  },
+  "author": "Roy Ermers",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/node": "^13.13.15",
+    "@types/three": "^0.126.1"
+  },
+  "dependencies": {
+    "esbuild": "^0.9.6",
+    "three": "^0.125.2",
+    "typescript": "3.8.3"
+  }
+}
