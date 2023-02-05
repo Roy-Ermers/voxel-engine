@@ -121,7 +121,7 @@ export default class Game {
     private async loadAtlas() {
         const loader = new THREE.TextureLoader();
 
-        const texture = await loader.loadAsync("/atlas.png");
+        const texture = await loader.loadAsync("/assets/atlas.png"); //comments
         texture.magFilter = THREE.NearestFilter;
         texture.minFilter = THREE.NearestFilter;
 
