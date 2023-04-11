@@ -1,5 +1,6 @@
 export default {
-    chunkSize: 16,
-    hillSize: 32,
-    renderDistance: 8
-}
+  chunkSize: 16,
+  hillSize: 128,
+  renderDistance: 6,
+  textureSize: 16,
+};

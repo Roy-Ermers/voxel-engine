@@ -33,6 +33,8 @@ export default class FirstPersonControls {
 	private lookDirection: Vector3;
 	private spherical: Spherical;
 
+	private timeout?: number;
+
 	constructor(private object: Object3D, private keyboard: KeyboardState, private domElement: HTMLElement) {
 		this.object = object;
 		this.domElement = domElement;
@@ -103,8 +105,14 @@ export default class FirstPersonControls {
 	}
 
 	onMouseMove(event: MouseEvent) {
+		clearTimeout(this.timeout);
 		this.mouseX = event.movementX;
 		this.mouseY = event.movementY;
+
+		this.timeout = window.setTimeout(() => {
+			this.mouseX = 0;
+			this.mouseY = 0;
+		});
 	}
 
 
@@ -147,14 +155,15 @@ export default class FirstPersonControls {
 
 		var actualMoveSpeed = delta * this.movementSpeed;
 
+		this.movementSpeed = this.keyboard.pressed("shift") ? 1 : 0.25;
 		if (this.keyboard.pressed("w") || (this.autoForward && !this.keyboard.pressed('s'))) this.object.translateZ(- (actualMoveSpeed + this.autoSpeedFactor));
 		if (this.keyboard.pressed('s')) this.object.translateZ(actualMoveSpeed);
 
 		if (this.keyboard.pressed('a')) this.object.translateX(- actualMoveSpeed);
 		if (this.keyboard.pressed('d')) this.object.translateX(actualMoveSpeed);
 
-		if (this.keyboard.pressed(' ')) this.object.translateY(actualMoveSpeed);
-		if (this.keyboard.pressed('shift')) this.object.translateY(- actualMoveSpeed);
+		if (this.keyboard.pressed('q')) this.object.translateY(actualMoveSpeed);
+		if (this.keyboard.pressed('e')) this.object.translateY(- actualMoveSpeed);
 
 		var actualLookSpeed = delta * this.lookSpeed;
 
