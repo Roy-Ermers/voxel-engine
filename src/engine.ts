@@ -4,7 +4,8 @@ import { EffectComposer } from "three/examples/jsm/postprocessing/EffectComposer
 import { SSAOPass } from "three/examples/jsm/postprocessing/SSAOPass";
 import config from "./config";
 import FlyControls from "./controllers/flyControls";
-import WorldGenerator from "./generators/worldGenerator/worldGenerator";
+import type WorldGeneratorKeys from "./generators/worldGenerator/worldGenerator";
+import WorldGenerator from "./generators/worldGenerator/worldGenerator.js?worker";
 import Thread, { ThreadedContext } from "./threads/thread";
 import KeyboardState from "./utils/keyboardState";
 import World from "./world.js";
@@ -43,7 +44,7 @@ export default class Game {
   private _material?: THREE.Material;
 
   private _composer?: EffectComposer;
-  private _generatorWorker?: ThreadedContext<WorldGenerator>;
+  private _generatorWorker?: ThreadedContext<WorldGeneratorKeys>;
 
   private currentChunk: IDType = ID.fromChunkCoordinates(0, 0, 0);
   private currentChunks: Set<IDType> = new Set();
@@ -62,8 +63,6 @@ export default class Game {
       0.1,
       1000
     );
-    this._camera.position.z = 2;
-    this._camera.position.y = 64;
 
     this._renderer = new THREE.WebGLRenderer();
 
@@ -86,6 +85,7 @@ export default class Game {
     this.createLight();
     await this.loadAssets();
     await this.createGenerator();
+
     // this.createAO();
   }
 
@@ -116,8 +116,8 @@ export default class Game {
   }
 
   private async createGenerator() {
-    this._generatorWorker = await Thread.create<WorldGenerator>(
-      "src/generators/worldGenerator/worldGenerator.ts",
+    this._generatorWorker = await Thread.create<WorldGeneratorKeys>(
+      new WorldGenerator(),
       1
     );
     console.log("generator loaded");

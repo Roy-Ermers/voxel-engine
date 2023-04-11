@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import Mesher from "./chunks/Mesher";
+import GreedyMesher from "./chunks/GreedyMesher.js?worker";
 import config from "./config.js";
 import Thread, { ThreadedContext } from "./threads/thread";
 import Vector3 from "./types/Vector3.js";
@@ -22,8 +23,7 @@ export default class World extends EventEmitter<"newchunk" | "generatechunk"> {
 
   public async create(atlasWidth: number, atlasHeight: number) {
     this.mesher = await Thread.create<Mesher>(
-      "src/chunks/GreedyMesher.ts",
-      // "src/chunks/MarchingCubesMesher.ts",
+      new GreedyMesher(),
       atlasWidth,
       atlasHeight
     );

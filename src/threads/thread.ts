@@ -1,12 +1,8 @@
-
-export type CallableFunctions<t> = {
-    [k in keyof t]: t[k] extends Function ? k : never;
-}[keyof t];
-
 export type ThreadedContext<t> = {
-    [k in CallableFunctions<t>]: (...args: (Parameters<t[k]>)) => Promise<ReturnType<t[k]>>
+  [k in keyof t]: t[k] extends (...args: infer p) => infer r
+    ? (...args: p) => Promise<r>
+    : never;
 };
-
 
 type ThreadMessage =
   | {
@@ -35,14 +31,9 @@ type ThreadMessage =
     };
 
 export default class Thread {
-  static async create<t>(path: string, ...args: any[]) {
-    return new Promise<ThreadedContext<t>>((resolve) => {
-      const worker = new Worker(path, { type: "module" });
-
-      const name = (
-        path.match(/(.+)\/(.+)\.ts$/)?.[2] ?? "Unknown thread"
-      ).trim();
-      console.log(`[Thread] Initializing ${name}`);
+  static async create<t>(worker: Worker, ...args: any[]) {
+    return new Promise<ThreadedContext<t>>(async (resolve) => {
+      let name: string;
 
       if (args.length > 0) {
         const constructor: ThreadMessage = {
