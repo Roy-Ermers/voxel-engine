@@ -1,0 +1,9 @@
+{
+    "identifier": "cobblestone",
+    "model": {
+        "name": "block_all_faces",
+        "textures": {
+            "face": "cobblestone"
+        }
+    }
+}

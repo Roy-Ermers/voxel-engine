@@ -1,0 +1,9 @@
+{
+    "identifier": "snow",
+    "model": {
+        "name": "block_all_faces",
+        "textures": {
+            "face": "snow"
+        }
+    }
+}

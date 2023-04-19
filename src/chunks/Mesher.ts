@@ -1,11 +1,13 @@
+import Chunk, { ChunkData } from "./Chunk";
+
 export default interface Mesher {
   generate(
-    data: Uint8Array,
+    data: ChunkData,
     resolution?: number
-  ): {
-    positions: number[];
+  ): Promise<{
+    vertices: number[];
     normals: number[];
     uvs: number[];
     indices: number[];
-  };
+  }>;
 }

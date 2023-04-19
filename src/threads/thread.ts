@@ -14,6 +14,10 @@ type ThreadMessage =
       value: any[];
     }
   | {
+      type: "error";
+      value: Error;
+    }
+  | {
       type: "functionCall";
       function: string;
       arguments: any[];
@@ -33,27 +37,35 @@ type ThreadMessage =
 export default class Thread {
   static async create<t>(worker: Worker, ...args: any[]) {
     return new Promise<ThreadedContext<t>>(async (resolve) => {
-      let name: string;
-
-      if (args.length > 0) {
-        const constructor: ThreadMessage = {
-          type: "constructorArguments",
-          value: args,
-        };
-        worker.postMessage(constructor);
-      }
+      let workerName = "Thread";
 
       worker.addEventListener("message", ({ data }) => {
         const message: ThreadMessage = data;
         if (message.type == "signatures") {
+          if (args.length > 0) {
+            const constructor: ThreadMessage = {
+              type: "constructorArguments",
+              value: args,
+            };
+            worker.postMessage(constructor);
+          }
+
+          const { name, functions } = message.value as unknown as {
+            name: string;
+            functions: string[];
+          };
+
+          workerName = name;
+
           const dataObject: Record<string, (...args: any[]) => Promise<any>> =
-            Thread.createContext(message.value, worker);
+            Thread.createContext(functions, worker);
+
           resolve(dataObject as unknown as ThreadedContext<t>);
-          console.log(`[Thread] ${name} is loaded.`);
+          console.log(`[Thread] ${workerName} is loaded.`);
         }
 
-        if (message.type == "log") {
-          console.log(`[${name}]`, ...message.value);
+        if (message.type === "error") {
+          console.error(`[${workerName}]`, message.value);
         }
       });
     });
@@ -95,7 +107,12 @@ export default class Thread {
   }
 
   protected log(...args: any[]) {
-    self.postMessage({ type: "log", value: args });
+    console.log(
+      `%c${this.constructor.name}%c`,
+      "background:deepskyblue;color:white;border-radius:0.5rem;padding: 0 0.5rem;font-family: sans-serif",
+      "color: white",
+      ...args
+    );
   }
 
   protected constructor() {
@@ -113,21 +130,25 @@ export default class Thread {
   protected initialize(...args: any[]) {}
 
   private addEventListeners() {
-    self.onmessage = ({ data }: { data: any }) => {
+    self.onmessage = async ({ data }: { data: any }) => {
       const message: ThreadMessage = data;
       if (message.type == "functionCall") {
-        // @ts-ignore
-        const returnData = this[message.function as keyof this](
-          ...message.arguments
-        );
-        const response: ThreadMessage = {
-          type: "returnData",
-          function: message.function,
-          value: returnData,
-          timestamp: message.timestamp,
-        };
+        try {
+          // @ts-ignore
+          const returnData = await this[message.function as keyof this](
+            ...message.arguments
+          );
+          const response: ThreadMessage = {
+            type: "returnData",
+            function: message.function,
+            value: returnData,
+            timestamp: message.timestamp,
+          };
 
-        self.postMessage(response);
+          self.postMessage(response);
+        } catch (e) {
+          console.error(`[${this.constructor.name}]`, e);
+        }
       }
 
       if (message.type == "constructorArguments") {
@@ -146,6 +167,9 @@ export default class Thread {
       if (typeof this[key as keyof this] == "function") functions.push(key);
     }
 
-    self.postMessage({ type: "signatures", value: functions });
+    self.postMessage({
+      type: "signatures",
+      value: { name: this.constructor.name, functions },
+    });
   }
 }

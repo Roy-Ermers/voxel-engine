@@ -6,12 +6,14 @@ import Thread, { ThreadedContext } from "./threads/thread";
 import Vector3 from "./types/Vector3.js";
 import EventEmitter from "./utils/EventEmitter.js";
 import ID, { IDType } from "./ID";
+import Chunk, { ChunkData } from "./chunks/Chunk";
+import { Face } from "./types/Face";
 export default class World extends EventEmitter<"newchunk" | "generatechunk"> {
   private get chunkSliceSize() {
     return config.chunkSize ** 2;
   }
 
-  private chunks = new Map<IDType, Uint8Array>();
+  private chunks = new Map<IDType, Chunk>();
 
   private meshes = new Map<IDType, THREE.Mesh>();
 
@@ -21,20 +23,8 @@ export default class World extends EventEmitter<"newchunk" | "generatechunk"> {
     super();
   }
 
-  public async create(atlasWidth: number, atlasHeight: number) {
-    this.mesher = await Thread.create<Mesher>(
-      new GreedyMesher(),
-      atlasWidth,
-      atlasHeight
-    );
-  }
-
-  private computeBlockOffset(x: number, y: number, z: number) {
-    const voxelX = THREE.MathUtils.euclideanModulo(x, config.chunkSize) | 0;
-    const voxelY = THREE.MathUtils.euclideanModulo(y, config.chunkSize) | 0;
-    const voxelZ = THREE.MathUtils.euclideanModulo(z, config.chunkSize) | 0;
-
-    return voxelY * this.chunkSliceSize + voxelZ * config.chunkSize + voxelX;
+  public async create(cullMap: Map<number, Face[]>) {
+    this.mesher = await Thread.create<Mesher>(new GreedyMesher(), cullMap);
   }
 
   public getChunkWorldCoordinates(id: IDType): [number, number, number] {
@@ -48,15 +38,11 @@ export default class World extends EventEmitter<"newchunk" | "generatechunk"> {
   hasChunk(x: number, y: number, z: number): boolean;
   hasChunk(id: IDType): boolean;
   hasChunk(x: IDType | number, y?: number, z?: number): boolean {
-    let id = x;
-
     if (typeof x === "number" && y !== undefined && z !== undefined) {
-      id = ID.fromCoordinates(x, y, z);
-
-      return this.chunks.has(id);
+      return this.chunks.has(ID.fromCoordinates(x, y, z));
     }
 
-    return this.chunks.has(id as IDType);
+    return this.chunks.has(x as IDType);
   }
 
   getChunk(
@@ -70,7 +56,7 @@ export default class World extends EventEmitter<"newchunk" | "generatechunk"> {
     let chunk = this.chunks.get(id);
 
     if (chunk === undefined && options?.createNewChunk !== false) {
-      chunk = new Uint8Array(config.chunkSize ** 3);
+      chunk = new Chunk();
       this.chunks.set(id, chunk);
 
       this.emit("generatechunk", id);
@@ -79,8 +65,9 @@ export default class World extends EventEmitter<"newchunk" | "generatechunk"> {
     return chunk;
   }
 
-  setChunk(id: IDType, data: Uint8Array) {
-    this.chunks.set(id, data);
+  setChunk(id: IDType, data: Chunk | ChunkData) {
+    const chunk = data instanceof Chunk ? data : new Chunk(data);
+    this.chunks.set(id, chunk);
 
     this.emit("newchunk", id);
   }
@@ -96,11 +83,7 @@ export default class World extends EventEmitter<"newchunk" | "generatechunk"> {
 
     if (chunk == undefined) throw new Error("Chunk isn't initialized yet.");
 
-    const offset = this.computeBlockOffset(x, y, z);
-
-    chunk[offset] = id;
-
-    chunk.set([id], offset);
+    chunk.setBlock(id, x, y, z);
   }
 
   getBlock(
@@ -113,9 +96,7 @@ export default class World extends EventEmitter<"newchunk" | "generatechunk"> {
 
     if (chunk === undefined) return 0;
 
-    const offset = this.computeBlockOffset(x, y, z);
-
-    return chunk[offset];
+    return chunk.getBlockId(x, y, z);
   }
 
   public async generateChunkMesh(id: IDType, force?: boolean) {
@@ -127,12 +108,12 @@ export default class World extends EventEmitter<"newchunk" | "generatechunk"> {
 
     if (!chunk) throw new Error("Can't generate ungenerated chunk.");
 
-    const { positions, normals, uvs, indices } = await this.mesher.generate(
-      new Uint8Array(chunk)
+    const { vertices, normals, uvs, indices } = await this.mesher.generate(
+      chunk.data
     );
 
     if (
-      positions.length == 0 &&
+      vertices.length == 0 &&
       normals.length == 0 &&
       uvs.length == 0 &&
       indices.length == 0
@@ -142,7 +123,7 @@ export default class World extends EventEmitter<"newchunk" | "generatechunk"> {
     const geometry = new THREE.BufferGeometry();
     geometry.setAttribute(
       "position",
-      new THREE.BufferAttribute(new Float32Array(positions), 3)
+      new THREE.BufferAttribute(new Float32Array(vertices), 3)
     );
     geometry.setAttribute(
       "normal",

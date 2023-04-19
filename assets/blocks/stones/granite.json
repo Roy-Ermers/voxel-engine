@@ -1,0 +1,9 @@
+{
+    "identifier": "granite",
+    "model": {
+        "name": "block_all_faces",
+        "textures": {
+            "face": "granite"
+        }
+    }
+}

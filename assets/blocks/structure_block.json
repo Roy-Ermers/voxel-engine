@@ -1,0 +1,14 @@
+{
+    "identifier": "structure_block",
+    "model": {
+        "name": "block",
+        "textures": {
+            "top": "structure_block",
+            "bottom": "structure_block",
+            "front": "structure_block",
+            "back": "structure_block",
+            "left": "structure_block",
+            "right": "structure_block"
+        }
+    }
+}

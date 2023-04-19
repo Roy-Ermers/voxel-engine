@@ -1,0 +1,9 @@
+{
+    "identifier": "pyramid",
+    "model": {
+        "name": "pyramid",
+        "textures": {
+            "texture": "sand"
+        }
+    }
+}

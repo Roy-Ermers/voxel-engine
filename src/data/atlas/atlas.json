@@ -1,0 +1,245 @@
+{
+    "size": [
+        128,
+        128
+    ],
+    "tileSize": 16,
+    "textures": {
+        "andesite": [
+            0,
+            0
+        ],
+        "birch_log": [
+            16,
+            0
+        ],
+        "birch_log_top": [
+            32,
+            0
+        ],
+        "clay": [
+            48,
+            0
+        ],
+        "coal_ore": [
+            64,
+            0
+        ],
+        "coarse_dirt": [
+            80,
+            0
+        ],
+        "cobbled_deepslate": [
+            96,
+            0
+        ],
+        "cobblestone": [
+            112,
+            0
+        ],
+        "cracked_deepslate_tiles": [
+            0,
+            16
+        ],
+        "cracked_polished_blackstone_bricks": [
+            16,
+            16
+        ],
+        "cracked_stone_bricks": [
+            32,
+            16
+        ],
+        "dark_oak_leaves": [
+            48,
+            16
+        ],
+        "dark_oak_log": [
+            64,
+            16
+        ],
+        "dark_oak_log_top": [
+            80,
+            16
+        ],
+        "debug_arrow": [
+            96,
+            16
+        ],
+        "debug_back": [
+            112,
+            16
+        ],
+        "debug_bottom": [
+            0,
+            32
+        ],
+        "debug_front": [
+            16,
+            32
+        ],
+        "debug_left": [
+            32,
+            32
+        ],
+        "debug_right": [
+            48,
+            32
+        ],
+        "debug_top": [
+            64,
+            32
+        ],
+        "deepslate": [
+            80,
+            32
+        ],
+        "deepslate_bricks": [
+            96,
+            32
+        ],
+        "deepslate_tiles": [
+            112,
+            32
+        ],
+        "diorite": [
+            0,
+            48
+        ],
+        "dirt": [
+            16,
+            48
+        ],
+        "fern": [
+            32,
+            48
+        ],
+        "granite": [
+            48,
+            48
+        ],
+        "grass": [
+            64,
+            48
+        ],
+        "grass_block_side": [
+            80,
+            48
+        ],
+        "grass_block_top": [
+            96,
+            48
+        ],
+        "gravel": [
+            112,
+            48
+        ],
+        "ice": [
+            0,
+            64
+        ],
+        "large_fern_bottom": [
+            16,
+            64
+        ],
+        "large_fern_top": [
+            32,
+            64
+        ],
+        "magma": [
+            48,
+            64
+        ],
+        "mangrove_log": [
+            64,
+            64
+        ],
+        "mangrove_log_top": [
+            80,
+            64
+        ],
+        "mud": [
+            96,
+            64
+        ],
+        "mud_bricks": [
+            112,
+            64
+        ],
+        "oak_log": [
+            0,
+            80
+        ],
+        "oak_log_top": [
+            16,
+            80
+        ],
+        "packed_mud": [
+            32,
+            80
+        ],
+        "podzol_side": [
+            48,
+            80
+        ],
+        "podzol_top": [
+            64,
+            80
+        ],
+        "polished_blackstone_bricks": [
+            80,
+            80
+        ],
+        "red_sand": [
+            96,
+            80
+        ],
+        "red_sandstone": [
+            112,
+            80
+        ],
+        "sand": [
+            0,
+            96
+        ],
+        "sandstone": [
+            16,
+            96
+        ],
+        "smooth_basalt": [
+            32,
+            96
+        ],
+        "snow": [
+            48,
+            96
+        ],
+        "soul_soil": [
+            64,
+            96
+        ],
+        "stone": [
+            80,
+            96
+        ],
+        "stone_bricks": [
+            96,
+            96
+        ],
+        "structure_block": [
+            112,
+            96
+        ],
+        "tall_grass_bottom": [
+            0,
+            112
+        ],
+        "tall_grass_top": [
+            16,
+            112
+        ],
+        "wheat": [
+            32,
+            112
+        ]
+    }
+}

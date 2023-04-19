@@ -1,0 +1,16 @@
+{
+    "textures": [
+        "face"
+    ],
+    "extends": {
+        "model": "block",
+        "textures": {
+            "bottom": "face",
+            "top": "face",
+            "front": "face",
+            "back": "face",
+            "left": "face",
+            "right": "face"
+        }
+    }
+}

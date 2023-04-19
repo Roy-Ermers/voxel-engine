@@ -1,15 +1,22 @@
 import * as THREE from "three";
 import { Mesh } from "three";
 import { EffectComposer } from "three/examples/jsm/postprocessing/EffectComposer";
+import { RenderPass } from "three/examples/jsm/postprocessing/RenderPass";
 import { SSAOPass } from "three/examples/jsm/postprocessing/SSAOPass";
 import config from "./config";
 import FlyControls from "./controllers/flyControls";
-import type WorldGeneratorKeys from "./generators/worldGenerator/worldGenerator";
-import WorldGenerator from "./generators/worldGenerator/worldGenerator.js?worker";
+import type WorldGeneratorKeys from "./generators/worldGenerator/OverworldGenerator";
+import WorldGenerator from "./generators/worldGenerator/OverworldGenerator.js?worker";
 import Thread, { ThreadedContext } from "./threads/thread";
 import KeyboardState from "./utils/keyboardState";
 import World from "./world.js";
 import ID, { IDType } from "./ID";
+import BlockList from "./blocks/BlockList";
+import BlockModelManager from "./blocks/BlockModelManager";
+import TextureManager from "./blocks/TextureManager";
+import { Face } from "./types/Face";
+import Gradient from "./colors/Gradient";
+import Color from "./colors/Color";
 
 export default class Game {
   public get scene() {
@@ -46,8 +53,10 @@ export default class Game {
   private _composer?: EffectComposer;
   private _generatorWorker?: ThreadedContext<WorldGeneratorKeys>;
 
-  private currentChunk: IDType = ID.fromChunkCoordinates(0, 0, 0);
+  private currentChunk: IDType = "";
   private currentChunks: Set<IDType> = new Set();
+
+  private skyGradient = new Gradient(new Color(0x000000), new Color(0x0280be));
 
   constructor() {
     this._scene = new THREE.Scene();
@@ -83,10 +92,32 @@ export default class Game {
 
   async load() {
     this.createLight();
+    await BlockList.load();
     await this.loadAssets();
     await this.createGenerator();
-
     // this.createAO();
+
+    // const blockModel = await ModelParser.generateMeshByIdentifier("pyramid");
+
+    // const geometry = new THREE.BufferGeometry();
+    // geometry.setAttribute(
+    //   "position",
+    //   new THREE.BufferAttribute(new Float32Array(blockModel.vertices), 3)
+    // );
+    // geometry.setAttribute(
+    //   "normal",
+    //   new THREE.BufferAttribute(new Float32Array(blockModel.normals), 3)
+    // );
+    // geometry.setAttribute(
+    //   "uv",
+    //   new THREE.BufferAttribute(new Float32Array(blockModel.uvs), 2)
+    // );
+    // geometry.setIndex(blockModel.indices);
+
+    // const mesh = new THREE.Mesh(geometry, this._material);
+    // mesh.position.set(-0.5, -0.5, 2.5);
+
+    // this.scene.add(mesh);
   }
 
   private createAO() {
@@ -97,21 +128,21 @@ export default class Game {
       this._renderer.domElement.width,
       this._renderer.domElement.height
     );
+
+    const renderPass = new RenderPass(this._scene, this._camera);
+    this._composer.addPass(renderPass);
+
     this._composer.addPass(ssaoPass);
   }
 
   private createLight() {
     this._sun = new THREE.DirectionalLight(0xffffff, 1);
-    this._sun.position.set(-1, -1.5, -1);
+    this._sun.position.set(-0.5, 0.5, -0.5);
     this._sun.castShadow = true;
 
-    const moon = new THREE.DirectionalLight(0xffffff, 0.5);
-    moon.position.set(1, -1.5, 1);
-
-    this._ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+    this._ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
 
     this.scene.add(this._sun);
-    this.scene.add(moon);
     this.scene.add(this._ambientLight);
   }
 
@@ -124,16 +155,26 @@ export default class Game {
   }
 
   private async loadAssets() {
-    const { width, height, texture } = await this.loadAtlas();
+    const { texture } = await this.loadAtlas();
 
     this._material = new THREE.MeshLambertMaterial({
       map: texture,
       side: THREE.FrontSide,
-      transparent: true,
+      alphaTest: 0.5,
+      // wireframe: true,
     });
 
     this._world = new World(this._material);
-    await this._world.create(width, height);
+
+    const cullMap = new Map<number, Face[]>();
+
+    for (const block of BlockList) {
+      const model = await BlockModelManager.generateBlockModel(block.id);
+
+      cullMap.set(block.id, model.cullFaces);
+    }
+
+    await this._world.create(cullMap);
     this._world.addEventListener("newchunk", (id) => this.addChunk(id));
     this._world.addEventListener("generatechunk", (id) =>
       this.generateChunk(id)
@@ -143,7 +184,7 @@ export default class Game {
   private async loadAtlas() {
     const loader = new THREE.TextureLoader();
 
-    const texture = await loader.loadAsync("./atlas.png");
+    const texture = await loader.loadAsync("./atlas/atlas.png");
     texture.magFilter = THREE.NearestFilter;
     texture.minFilter = THREE.NearestFilter;
 
@@ -169,7 +210,7 @@ export default class Game {
 
     if (!this.world) throw new Error("World is not defined.");
 
-    if (!this.world.hasChunk(id)) await this.generateChunk(id);
+    if (!this.world.hasChunk(id)) return await this.generateChunk(id);
 
     this.addChunk(id);
   }
@@ -181,6 +222,8 @@ export default class Game {
     // mesh is empty, so we can save computing power
     if (mesh == null) return;
     mesh.receiveShadow = true;
+    mesh.castShadow = true;
+
     mesh.position.set(
       ...(ID.toChunkCoordinates(id).map((x) => x * config.chunkSize) as [
         number,
@@ -212,45 +255,57 @@ export default class Game {
     this._camera.aspect = window.innerWidth / window.innerHeight;
     this._camera.updateProjectionMatrix();
     this._renderer.setSize(window.innerWidth, window.innerHeight);
-
-    this.render();
   }
 
   public renderChunks(x: number, y: number, z: number) {
-    const horizontalDistance = Math.floor(config.renderDistance / 2);
-    const verticalDistance = Math.floor(config.renderDistance / 2);
+    const halfDistance = Math.ceil(config.renderDistance / 2);
     let ids: IDType[] = [];
 
-    for (
-      let chunkX = x - horizontalDistance;
-      chunkX < x + horizontalDistance;
-      chunkX++
-    )
-      for (
-        let chunkZ = z - horizontalDistance;
-        chunkZ < z + horizontalDistance;
-        chunkZ++
-      )
-        for (
-          let chunkY = y + verticalDistance;
-          chunkY > y - verticalDistance;
-          chunkY--
-        )
-          ids.push(ID.fromChunkCoordinates(chunkX, chunkY, chunkZ));
+    // add ids from center to edges
+    for (let i = 0; i < config.renderDistance; i++) {
+      for (let j = 0; j < config.renderDistance; j++) {
+        for (let k = 0; k < config.renderDistance; k++) {
+          ids.push(
+            ID.fromCoordinates(
+              (x + i - halfDistance) * config.chunkSize,
+              (halfDistance + y - j) * config.chunkSize,
+              (z + k - halfDistance) * config.chunkSize
+            )
+          );
+        }
+      }
+    }
 
     for (const id of ids) {
       if (!this.currentChunks.has(id)) this.enqueueChunk(id);
+
+      this.currentChunks.add(id);
     }
 
     for (const id of [...this.currentChunks].filter((x) => !ids.includes(x)))
       this.disposeChunk(id);
   }
 
-  public render() {
-    this._renderer.render(this.scene, this.camera);
-    this._composer?.render(1);
+  private lastFrame = -1;
+  public render(frames: number) {
+    const delta = frames - this.lastFrame;
+    this.lastFrame = frames;
 
-    this.controller.update(1);
+    const skyColorIndex = Math.max(
+      0,
+      Math.min(this.camera.position.y / 64 + 1, 1)
+    );
+
+    this._scene.background = new THREE.Color(
+      this.skyGradient.getColorAt(skyColorIndex)
+    );
+    this._sun!.intensity = Math.min(1, skyColorIndex);
+    this._ambientLight!.intensity = Math.min(0.5, Math.max(0.1, skyColorIndex));
+
+    this._renderer.render(this.scene, this.camera);
+    this._composer?.render(delta / 16);
+
+    this.controller.update(delta / 16);
 
     const playerChunk = ID.fromCoordinates(
       this.camera.position.x,
@@ -263,14 +318,18 @@ export default class Game {
       this.currentChunk = playerChunk;
     }
 
-    requestAnimationFrame(() => this.render());
+    requestAnimationFrame((frames) => this.render(frames));
   }
 }
+
+window.ModelParser = BlockModelManager;
+window.blockList = BlockList;
+window.TextureManager = TextureManager;
 
 const game = new Game();
 // @ts-ignore
 window.game = game;
 game.load().then(() => {
   console.log("Game is loaded.");
-  game.render();
+  game.render(0);
 });

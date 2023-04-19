@@ -1,0 +1,50 @@
+{
+    "textures": [
+        "top",
+        "bottom"
+    ],
+    "parts": [
+        {
+            "position": [
+                0,
+                0,
+                8
+            ],
+            "size": [
+                16,
+                16,
+                0
+            ],
+            "rotation": [
+                0,
+                0,
+                0
+            ],
+            "textures": {
+                "front": "bottom",
+                "back": "bottom"
+            }
+        },
+        {
+            "position": [
+                0,
+                16,
+                8
+            ],
+            "rotation": [
+                0,
+                0,
+                0
+            ],
+            "size": [
+                16,
+                16,
+                0
+            ],
+            "textures": {
+                "front": "top",
+                "back": "top"
+            }
+        }
+    ]
+}

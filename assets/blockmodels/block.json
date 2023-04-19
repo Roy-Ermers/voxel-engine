@@ -1,0 +1,40 @@
+{
+    "cullFaces": [
+        "bottom",
+        "top",
+        "front",
+        "back",
+        "left",
+        "right"
+    ],
+    "textures": [
+        "down",
+        "up",
+        "north",
+        "south",
+        "west",
+        "east"
+    ],
+    "parts": [
+        {
+            "position": [
+                0,
+                0,
+                0
+            ],
+            "size": [
+                16,
+                16,
+                16
+            ],
+            "textures": {
+                "bottom": "bottom",
+                "top": "top",
+                "front": "front",
+                "back": "back",
+                "left": "left",
+                "right": "right"
+            }
+        }
+    ]
+}

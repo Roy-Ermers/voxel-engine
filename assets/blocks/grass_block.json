@@ -1,0 +1,14 @@
+{
+    "identifier": "grass_block",
+    "model": {
+        "name": "block",
+        "textures": {
+            "top": "grass_block_top",
+            "front": "grass_block_side",
+            "back": "grass_block_side",
+            "left": "grass_block_side",
+            "right": "grass_block_side",
+            "bottom": "dirt"
+        }
+    }
+}

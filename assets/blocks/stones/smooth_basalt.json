@@ -1,0 +1,9 @@
+{
+    "identifier": "smooth_basalt",
+    "model": {
+        "name": "block_all_faces",
+        "textures": {
+            "face": "smooth_basalt"
+        }
+    }
+}

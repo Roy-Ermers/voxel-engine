@@ -1,164 +1,205 @@
-import * as THREE from "three";
 import config from "../config";
 import Thread from "../threads/thread";
 import Mesher from "./Mesher";
+import BlockModelManager from "../blocks/BlockModelManager";
+import Chunk, { ChunkData } from "./Chunk";
+import { FACES, FACE_OPPOSITE_MAP, Face } from "../types/Face";
+import BlockList from "../blocks/BlockList";
+
+const FACE_OFFSET = {
+  front: [0, 0, -1],
+  back: [0, 0, 1],
+  top: [0, 1, 0],
+  bottom: [0, -1, 0],
+  right: [1, 0, 0],
+  left: [-1, 0, 0],
+} as Record<Face, [number, number, number]>;
+
+const FACE_VERTICES: Record<Face, number[]> = {
+  front: [
+    //bottom right
+    1, 0, 0,
+    //bottom left
+    0, 0, 0,
+    //top right
+    1, 1, 0,
+    //top left
+    0, 1, 0,
+  ],
+  back: [
+    //bottom left
+    0, 0, 1,
+    //bottom right
+    1, 0, 1,
+    //top left
+    0, 1, 1,
+    //top right
+    1, 1, 1,
+  ],
+  top: [
+    //bottom left
+    0, 1, 1,
+    //bottom right
+    1, 1, 1,
+    //top left
+    0, 1, 0,
+    //top right
+    1, 1, 0,
+  ],
+  bottom: [
+    //bottom right
+    1, 0, 1,
+    //bottom left
+    0, 0, 1,
+    //top right
+    1, 0, 0,
+    //top left
+    0, 0, 0,
+  ],
+  right: [
+    //top right
+    1, 1, 1,
+    //bottom right
+    1, 0, 1,
+    //top left
+    1, 1, 0,
+    //bottom left
+    1, 0, 0,
+  ],
+  left: [
+    //top left
+    0, 1, 0,
+    //bottom left
+    0, 0, 0,
+    //top right
+    0, 1, 1,
+    //bottom right
+    0, 0, 1,
+  ],
+};
+
+const FACE_NORMALS: Record<Face, number[]> = {
+  front: [0, 0, 1],
+  back: [0, 0, -1],
+  top: [0, 1, 0],
+  bottom: [0, -1, 0],
+  right: [1, 0, 0],
+  left: [-1, 0, 0],
+};
+
+let CULLED_FACE_MAP = new Map<number, number[]>();
 
 export default class GreedyMesher extends Thread implements Mesher {
-  private atlasWidth: number = 0;
-  private atlasHeight: number = 0;
-
-  private computeBlockOffset(x: number, y: number, z: number) {
-    // if coordinates are outside of the chunk, return -1
-    if (
-      x < 0 ||
-      y < 0 ||
-      z < 0 ||
-      x >= config.chunkSize ||
-      y >= config.chunkSize ||
-      z >= config.chunkSize
-    ) {
-      return -1;
-    }
-
-    const voxelX = THREE.MathUtils.euclideanModulo(x, config.chunkSize) | 0;
-    const voxelY = THREE.MathUtils.euclideanModulo(y, config.chunkSize) | 0;
-    const voxelZ = THREE.MathUtils.euclideanModulo(z, config.chunkSize) | 0;
-
-    return voxelY * config.chunkSize ** 2 + voxelZ * config.chunkSize + voxelX;
-  }
-
-  private getBlock(data: Uint8Array, x: number, y: number, z: number) {
-    const offset = this.computeBlockOffset(x, y, z);
-    if (offset === -1) return 0;
-
-    return data[offset] ?? 0;
-  }
-
   constructor() {
     super();
   }
 
-  protected initialize(atlasWidth: number, atlasHeight: number) {
-    this.atlasWidth = atlasWidth;
-    this.atlasHeight = atlasHeight;
+  protected async initialize(cullMap: Map<number, Face[]>) {
+    await BlockList.load();
+
+    CULLED_FACE_MAP = new Map<number, number[]>(
+      [...cullMap.entries()].map(([key, faces]) => [
+        key,
+        faces.map((x) => FACES.indexOf(x)),
+      ])
+    );
   }
 
-  public generate(data: Uint8Array, resolution: number = 1) {
-    const positions = [];
-    const normals = [];
-    const uvs = [];
-    const indices = [];
+  public async generate(data: ChunkData, resolution: number = 1) {
+    const chunk = new Chunk(data);
+    const vertices: number[] = [];
+    const normals: number[] = [];
+    const uvs: number[] = [];
+    const indices: number[] = [];
 
-    for (let y = 0; y < config.chunkSize; y++) {
-      for (let z = 0; z < config.chunkSize; z++) {
-        for (let x = 0; x < config.chunkSize; x++) {
-          const voxel = this.getBlock(data, x, y, z);
-          if (!voxel) {
+    for (let y = 0; y < config.chunkSize; y += resolution) {
+      for (let z = 0; z < config.chunkSize; z += resolution) {
+        for (let x = 0; x < config.chunkSize; x += resolution) {
+          const voxel = chunk.getBlockId(x, y, z);
+
+          if (voxel === -1 || voxel === 0) {
             continue;
           }
 
-          // voxel 0 is sky (empty) so for UVs we start at 0
-          const uvVoxel = voxel - 1;
-          // There is a voxel here but do we need faces for it?
-          for (const { dir, corners, uvRow } of GreedyMesher.faces) {
-            const neighbor = this.getBlock(
-              data,
-              x + dir[0],
-              y + dir[1],
-              z + dir[2]
+          const model = await BlockModelManager.generateMesh(voxel);
+
+          if (!CULLED_FACE_MAP.has(voxel)) {
+            CULLED_FACE_MAP.set(
+              voxel,
+              model.cullFaces.map((x) => FACES.indexOf(x))
+            );
+          }
+
+          if (!model.isCube) {
+            const index = vertices.length / 3;
+            vertices.push(
+              ...model.vertices.map((vert, i) => {
+                if (i % 3 === 0) {
+                  return vert + x;
+                } else if (i % 3 === 1) {
+                  return vert + y;
+                } else {
+                  return vert + z;
+                }
+              })
+            );
+            normals.push(...model.normals);
+            uvs.push(...model.uvs);
+            indices.push(...model.indices.map((x) => x + index));
+            continue;
+          }
+
+          for (const face of FACES) {
+            const faceIndex = FACES.indexOf(face);
+            const faceOpposite = FACE_OPPOSITE_MAP[face];
+            const offset = FACE_OFFSET[face];
+
+            const neighbor = chunk.getBlockId(
+              x + offset[0] * resolution,
+              y + offset[1] * resolution,
+              z + offset[2] * resolution
             );
 
-            if (neighbor) {
+            if (CULLED_FACE_MAP.get(neighbor)?.includes(faceOpposite)) {
               continue;
             }
 
-            // this voxel has no neighbor in this direction so we need a face.
-            const ndx = positions.length / 3;
-            for (const { pos, uv } of corners) {
-              positions.push(pos[0] + x, pos[1] + y, pos[2] + z);
-              normals.push(...dir);
-              uvs.push(
-                ((uvVoxel + uv[0]) * config.textureSize) / this.atlasWidth,
-                1 -
-                  ((uvRow + 1 - uv[1]) * config.textureSize) / this.atlasHeight
-              );
-            }
+            const ndx = vertices.length / 3;
+            const faceVertices = FACE_VERTICES[face].map((vert, i) => {
+              if (i % 3 === 0) {
+                return vert * resolution + x;
+              } else if (i % 3 === 1) {
+                return vert * resolution + y;
+              } else {
+                return vert * resolution + z;
+              }
+            });
+
+            vertices.push(...faceVertices);
+
+            normals.push(
+              ...FACE_NORMALS[face],
+              ...FACE_NORMALS[face],
+              ...FACE_NORMALS[face],
+              ...FACE_NORMALS[face]
+            );
+
+            const UVSlice = model.uvs.length / FACES.length;
+            uvs.push(
+              ...model.uvs.slice(
+                faceIndex * UVSlice,
+                faceIndex * UVSlice + UVSlice
+              )
+            );
+
             indices.push(ndx, ndx + 1, ndx + 2, ndx + 2, ndx + 1, ndx + 3);
           }
         }
       }
     }
-    return { positions, normals, uvs, indices };
-  }
 
-  private static faces = [
-    {
-      // left
-      uvRow: 0,
-      dir: [-1, 0, 0],
-      corners: [
-        { pos: [0, 1, 0], uv: [0, 1] },
-        { pos: [0, 0, 0], uv: [0, 0] },
-        { pos: [0, 1, 1], uv: [1, 1] },
-        { pos: [0, 0, 1], uv: [1, 0] },
-      ],
-    },
-    {
-      // right
-      uvRow: 0,
-      dir: [1, 0, 0],
-      corners: [
-        { pos: [1, 1, 1], uv: [0, 1] },
-        { pos: [1, 0, 1], uv: [0, 0] },
-        { pos: [1, 1, 0], uv: [1, 1] },
-        { pos: [1, 0, 0], uv: [1, 0] },
-      ],
-    },
-    {
-      // bottom
-      uvRow: 1,
-      dir: [0, -1, 0],
-      corners: [
-        { pos: [1, 0, 1], uv: [1, 0] },
-        { pos: [0, 0, 1], uv: [0, 0] },
-        { pos: [1, 0, 0], uv: [1, 1] },
-        { pos: [0, 0, 0], uv: [0, 1] },
-      ],
-    },
-    {
-      // top
-      uvRow: 2,
-      dir: [0, 1, 0],
-      corners: [
-        { pos: [0, 1, 1], uv: [1, 1] },
-        { pos: [1, 1, 1], uv: [0, 1] },
-        { pos: [0, 1, 0], uv: [1, 0] },
-        { pos: [1, 1, 0], uv: [0, 0] },
-      ],
-    },
-    {
-      // back
-      uvRow: 0,
-      dir: [0, 0, -1],
-      corners: [
-        { pos: [1, 0, 0], uv: [0, 0] },
-        { pos: [0, 0, 0], uv: [1, 0] },
-        { pos: [1, 1, 0], uv: [0, 1] },
-        { pos: [0, 1, 0], uv: [1, 1] },
-      ],
-    },
-    {
-      // front
-      uvRow: 0,
-      dir: [0, 0, 1],
-      corners: [
-        { pos: [0, 0, 1], uv: [0, 0] },
-        { pos: [1, 0, 1], uv: [1, 0] },
-        { pos: [0, 1, 1], uv: [0, 1] },
-        { pos: [1, 1, 1], uv: [1, 1] },
-      ],
-    },
-  ];
+    return { vertices, normals, uvs, indices };
+  }
 }
 
 if (self) new GreedyMesher();

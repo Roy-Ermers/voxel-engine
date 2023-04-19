@@ -1,0 +1,109 @@
+{
+    "uvLock": true,
+    "textures": [
+        "side",
+        "end"
+    ],
+    "parts": [
+        {
+            "size": [
+                12,
+                16,
+                12
+            ],
+            "position": [
+                2,
+                0,
+                2
+            ],
+            "textures": {
+                "bottom": "end",
+                "top": "end",
+                "front": "side",
+                "back": "side",
+                "left": "side",
+                "right": "side"
+            }
+        },
+        {
+            "size": [
+                10,
+                16,
+                2
+            ],
+            "position": [
+                3,
+                0,
+                0
+            ],
+            "textures": {
+                "bottom": "end",
+                "top": "end",
+                "front": "side",
+                "back": "side",
+                "left": "side",
+                "right": "side"
+            }
+        },
+        {
+            "size": [
+                10,
+                16,
+                2
+            ],
+            "position": [
+                3,
+                0,
+                14
+            ],
+            "textures": {
+                "bottom": "end",
+                "top": "end",
+                "front": "side",
+                "back": "side",
+                "left": "side",
+                "right": "side"
+            }
+        },
+        {
+            "size": [
+                2,
+                16,
+                10
+            ],
+            "position": [
+                0,
+                0,
+                3
+            ],
+            "textures": {
+                "bottom": "end",
+                "top": "end",
+                "front": "side",
+                "back": "side",
+                "left": "side",
+                "right": "side"
+            }
+        },
+        {
+            "size": [
+                2,
+                16,
+                10
+            ],
+            "position": [
+                14,
+                0,
+                3
+            ],
+            "textures": {
+                "bottom": "end",
+                "top": "end",
+                "front": "side",
+                "back": "side",
+                "left": "side",
+                "right": "side"
+            }
+        }
+    ]
+}

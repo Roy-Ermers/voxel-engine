@@ -1,0 +1,10 @@
+{
+    "identifier": "tall_grass",
+    "model": {
+        "name": "tall_plant",
+        "textures": {
+            "top": "tall_grass_top",
+            "bottom": "tall_grass_bottom"
+        }
+    }
+}

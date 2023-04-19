@@ -1,0 +1,17 @@
+{
+    "textures": [
+        "side",
+        "end"
+    ],
+    "extends": {
+        "model": "block",
+        "textures": {
+            "bottom": "end",
+            "top": "end",
+            "front": "side",
+            "back": "side",
+            "left": "side",
+            "right": "side"
+        }
+    }
+}

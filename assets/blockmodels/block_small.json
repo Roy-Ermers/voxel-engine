@@ -1,0 +1,32 @@
+{
+    "textures": [
+        "down",
+        "up",
+        "north",
+        "south",
+        "west",
+        "east"
+    ],
+    "parts": [
+        {
+            "position": [
+                4,
+                4,
+                4
+            ],
+            "size": [
+                8,
+                8,
+                8
+            ],
+            "textures": {
+                "bottom": "bottom",
+                "top": "top",
+                "front": "front",
+                "back": "back",
+                "left": "left",
+                "right": "right"
+            }
+        }
+    ]
+}

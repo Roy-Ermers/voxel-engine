@@ -1,0 +1,10 @@
+{
+    "identifier": "oak_log",
+    "model": {
+        "name": "log",
+        "textures": {
+            "end": "oak_log_top",
+            "side": "oak_log"
+        }
+    }
+}
