@@ -1,9 +1,11 @@
+import PacketEncoder from "./PacketEncoder";
+import Proxy from "./Proxy";
+
 export type ThreadedContext<t> = {
   [k in keyof t]: t[k] extends (...args: infer p) => infer r
     ? (...args: p) => Promise<r>
     : never;
 };
-
 type ThreadMessage =
   | {
       type: "signatures";
@@ -21,6 +23,7 @@ type ThreadMessage =
       type: "functionCall";
       function: string;
       arguments: any[];
+      argumentIndex?: number;
       timestamp: number;
     }
   | {
@@ -34,76 +37,114 @@ type ThreadMessage =
       value: any[];
     };
 
-export default class Thread {
-  static async create<t>(worker: Worker, ...args: any[]) {
-    return new Promise<ThreadedContext<t>>(async (resolve) => {
-      let workerName = "Thread";
+let isInitialized = false;
+export default class Thread<
+  p extends Record<keyof p, (...args: any[]) => any> = {}
+> {
+  static async create<t extends Thread<any>>(
+    workerClass: { new (): Worker },
+    ...args: Parameters<t["initialize"]>
+  ) {
+    return new Promise<ThreadedContext<t>>(async (resolve, reject) => {
+      let workerName = workerClass.name;
 
-      worker.addEventListener("message", ({ data }) => {
-        const message: ThreadMessage = data;
-        if (message.type == "signatures") {
-          if (args.length > 0) {
-            const constructor: ThreadMessage = {
-              type: "constructorArguments",
-              value: args,
+      const worker = new workerClass();
+
+      const initializeTimeout = setTimeout(() => {
+        console.error(
+          `[${workerName}]`,
+          "Thread initialization timed out. Check your thread code for errors."
+        );
+
+        reject(
+          "Thread initialization timed out. Check your thread code for errors."
+        );
+      }, 5000);
+
+      const constructor: ThreadMessage = {
+        type: "constructorArguments",
+        value: args,
+      };
+
+      for (const arg of args) {
+        if (arg instanceof Proxy) {
+          arg.startConnection(worker);
+        }
+      }
+
+      worker.postMessage(PacketEncoder.encode(constructor));
+
+      worker.addEventListener("error", (e) => console.error(e));
+      worker.addEventListener("messageerror", (e) => console.error(e));
+
+      worker.addEventListener(
+        "message",
+        ({ data }) => {
+          const message: ThreadMessage = PacketEncoder.decode(data);
+
+          if (message.type == "signatures") {
+            clearTimeout(initializeTimeout);
+
+            const { name, functions } = message.value as unknown as {
+              name: string;
+              functions: string[];
             };
-            worker.postMessage(constructor);
+
+            workerName = name;
+
+            const dataObject = Thread.createContext<t>(functions, worker);
+
+            console.log(`[Thread] ${workerName} is loaded.`);
+            resolve(dataObject as unknown as ThreadedContext<t>);
           }
-
-          const { name, functions } = message.value as unknown as {
-            name: string;
-            functions: string[];
-          };
-
-          workerName = name;
-
-          const dataObject: Record<string, (...args: any[]) => Promise<any>> =
-            Thread.createContext(functions, worker);
-
-          resolve(dataObject as unknown as ThreadedContext<t>);
-          console.log(`[Thread] ${workerName} is loaded.`);
-        }
-
-        if (message.type === "error") {
-          console.error(`[${workerName}]`, message.value);
-        }
-      });
+        },
+        { once: true }
+      );
     });
   }
 
-  private static createContext(keys: string[], worker: Worker) {
+  /**
+   * Creates a context object that can be used to call functions on the thread.
+   */
+  private static createContext<t extends Record<string, any>>(
+    keys: string[],
+    worker: Worker
+  ) {
     const context: Record<string, (...args: any[]) => Promise<any>> = {};
     let id = 0;
     for (const name of keys) {
       context[name] = async (...args: any[]) => {
         return await new Promise<any>((resolve) => {
           const timestamp = Date.now() + id++;
+
           worker.addEventListener(
             "message",
             function receiveReturnValue({ data }) {
-              const message: ThreadMessage = data;
+              const message: ThreadMessage = PacketEncoder.decode(data);
+
               if (
                 message.type == "returnData" &&
                 message.function == name &&
-                message.timestamp == timestamp
+                message.timestamp === timestamp
               ) {
-                resolve(data.value);
-
                 worker.removeEventListener("message", receiveReturnValue);
+                resolve(message.value);
               }
             }
           );
+
           const callMessage: ThreadMessage = {
             type: "functionCall",
             function: name,
             arguments: args,
             timestamp,
           };
-          worker.postMessage(callMessage);
+
+          worker.postMessage(PacketEncoder.encode(callMessage));
         });
       };
     }
-    return context;
+    return context as ThreadedContext<t>;
   }
 
   protected log(...args: any[]) {
@@ -123,21 +164,27 @@ export default class Thread {
       return;
     }
 
-    this.sendSignatures();
+    if (isInitialized) {
+      return;
+    }
+
+    isInitialized = true;
+
     this.addEventListeners();
   }
 
-  protected initialize(...args: any[]) {}
+  public initialize(...args: any[]): void | Promise<void> {}
 
   private addEventListeners() {
-    self.onmessage = async ({ data }: { data: any }) => {
-      const message: ThreadMessage = data;
+    self.onmessage = async ({ data }) => {
+      const message: ThreadMessage = PacketEncoder.decode(data);
       if (message.type == "functionCall") {
         try {
           // @ts-ignore
           const returnData = await this[message.function as keyof this](
             ...message.arguments
           );
+
           const response: ThreadMessage = {
             type: "returnData",
             function: message.function,
@@ -145,14 +192,15 @@ export default class Thread {
             timestamp: message.timestamp,
           };
 
-          self.postMessage(response);
+          self.postMessage(PacketEncoder.encode(response));
         } catch (e) {
           console.error(`[${this.constructor.name}]`, e);
         }
       }
 
       if (message.type == "constructorArguments") {
-        this.initialize(...message.value);
+        await this.initialize(...message.value);
+        this.sendSignatures();
       }
     };
   }
@@ -167,9 +215,11 @@ export default class Thread {
       if (typeof this[key as keyof this] == "function") functions.push(key);
     }
 
-    self.postMessage({
+    const signatures = {
       type: "signatures",
       value: { name: this.constructor.name, functions },
-    });
+    };
+
+    self.postMessage(PacketEncoder.encode(signatures));
   }
 }

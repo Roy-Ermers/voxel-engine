@@ -1,0 +1,9 @@
+{
+  "identifier": "leaves",
+  "model": {
+    "name": "block_all_faces",
+    "textures": {
+      "face": "dark_oak_leaves"
+    }
+  }
+}

@@ -1,4 +1,4 @@
-import config from "./config";
+import Chunk from "./chunks/Chunk";
 
 export type IDType = string;
 
@@ -8,9 +8,9 @@ export default class ID {
   }
 
   static fromCoordinates(x: number, y: number, z: number): IDType {
-    const chunkX = Math.floor(x / config.chunkSize);
-    const chunkY = Math.floor(y / config.chunkSize);
-    const chunkZ = Math.floor(z / config.chunkSize);
+    const chunkX = Math.floor(x / Chunk.size);
+    const chunkY = Math.floor(y / Chunk.size);
+    const chunkZ = Math.floor(z / Chunk.size);
 
     return this.fromChunkCoordinates(chunkX, chunkY, chunkZ);
   }

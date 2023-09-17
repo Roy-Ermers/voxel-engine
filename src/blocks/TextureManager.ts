@@ -1,4 +1,3 @@
-import config from "../config";
 import atlasData from "../data/atlas/atlas.json";
 import Atlas from "../types/Atlas";
 

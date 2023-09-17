@@ -3,6 +3,7 @@ import BlockModelDefinition, {
   BlockModelPart,
 } from "../types/BlockModelDefinition";
 import { FACES, Face } from "../types/Face";
+import Block from "./Block";
 import BlockList from "./BlockList";
 import TextureManager from "./TextureManager";
 
@@ -314,8 +315,22 @@ export default class BlockModelManager {
 
   public static async generateBlockModel(
     blockIdentifier: number
+  ): Promise<GeneratedBlockModel>;
+
+  public static async generateBlockModel(
+    block: Block
+  ): Promise<GeneratedBlockModel>;
+
+  public static async generateBlockModel(
+    blockData: Block | number
   ): Promise<GeneratedBlockModel> {
-    const block = BlockList.getById(blockIdentifier);
+    let block: Block;
+
+    if (typeof blockData === "number") {
+      block = BlockList.getById(blockData);
+    } else {
+      block = blockData;
+    }
 
     if (!block.model) {
       return {

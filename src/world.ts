@@ -1,13 +1,13 @@
 import * as THREE from 'three';
-import Mesher from "./chunks/Mesher";
+import ID, { IDType } from "./ID";
+import Chunk, { ChunkDataType } from "./chunks/Chunk";
+import ChunkMesher from "./chunks/ChunkMesher";
 import GreedyMesher from "./chunks/GreedyMesher.js?worker";
 import config from "./config.js";
-import Thread, { ThreadedContext } from "./threads/thread";
+import Thread, { ThreadedContext } from "./threads/Thread";
+import { Face } from "./types/Face";
 import Vector3 from "./types/Vector3.js";
 import EventEmitter from "./utils/EventEmitter.js";
-import ID, { IDType } from "./ID";
-import Chunk, { ChunkData } from "./chunks/Chunk";
-import { Face } from "./types/Face";
 export default class World extends EventEmitter<"newchunk" | "generatechunk"> {
   private get chunkSliceSize() {
     return config.chunkSize ** 2;
@@ -17,14 +17,14 @@ export default class World extends EventEmitter<"newchunk" | "generatechunk"> {
 
   private meshes = new Map<IDType, THREE.Mesh>();
 
-  private mesher!: ThreadedContext<Mesher>;
+  private mesher!: ThreadedContext<ChunkMesher>;
 
   constructor(private material: THREE.Material) {
     super();
   }
 
   public async create(cullMap: Map<number, Face[]>) {
-    this.mesher = await Thread.create<Mesher>(new GreedyMesher(), cullMap);
+    this.mesher = await Thread.create<ChunkMesher>(GreedyMesher, cullMap);
   }
 
   public getChunkWorldCoordinates(id: IDType): [number, number, number] {
@@ -56,7 +56,7 @@ export default class World extends EventEmitter<"newchunk" | "generatechunk"> {
     let chunk = this.chunks.get(id);
 
     if (chunk === undefined && options?.createNewChunk !== false) {
-      chunk = new Chunk();
+      chunk = new Chunk(id);
       this.chunks.set(id, chunk);
 
       this.emit("generatechunk", id);
@@ -65,8 +65,8 @@ export default class World extends EventEmitter<"newchunk" | "generatechunk"> {
     return chunk;
   }
 
-  setChunk(id: IDType, data: Chunk | ChunkData) {
-    const chunk = data instanceof Chunk ? data : new Chunk(data);
+  setChunk(id: IDType, data: Chunk | ChunkDataType) {
+    const chunk = data instanceof Chunk ? data : new Chunk(id, data);
     this.chunks.set(id, chunk);
 
     this.emit("newchunk", id);
@@ -109,7 +109,7 @@ export default class World extends EventEmitter<"newchunk" | "generatechunk"> {
     if (!chunk) throw new Error("Can't generate ungenerated chunk.");
 
     const { vertices, normals, uvs, indices } = await this.mesher.generate(
-      chunk.data
+      chunk
     );
 
     if (
