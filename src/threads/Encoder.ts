@@ -1,14 +1,14 @@
-export default interface Encoder<t> {
+export default interface Encoder<T, EncodeReturnType extends { data: any, shared: any[] } = { data: any, shared: any[] }> {
   canEncode(data: any): boolean;
 
   /**
    * Encode data into a format that can be sent over the wire
    */
-  encode(data: t): any;
+  encode(data: T): EncodeReturnType;
 
   /**
    * Decode data from a format that can be sent over the wire
    * @param data
    */
-  decode(data: any): t;
+  decode(data: EncodeReturnType['data'], shared: EncodeReturnType['shared']): T;
 }

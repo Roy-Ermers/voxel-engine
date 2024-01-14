@@ -39,7 +39,7 @@ export default class PlanetGenerator extends Thread implements WorldGenerator {
       }
     }
 
-    return chunk.data;
+    return chunk;
   }
 }
 

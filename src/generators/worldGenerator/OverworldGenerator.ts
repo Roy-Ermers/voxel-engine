@@ -31,6 +31,8 @@ export default class OverworldGenerator
   }
 
   public generateChunk(chunkX: number, chunkY: number, chunkZ: number) {
+    performance.mark(`generating-chunk-${chunkX}:${chunkY}:${chunkZ}-start`);
+
     if (this.noise === undefined || this.random === undefined) {
       throw new Error("Generator not initialized.");
     }
@@ -44,7 +46,7 @@ export default class OverworldGenerator
         const z = localZ + chunkZ * Chunk.size;
         const mountains =
           Math.abs(this.noise(x / 200, z / 200, 100) ** 2) * 1024;
-        const layerThickness = Math.abs(this.noise(x / 75, z / 75, 50)) * 7;
+        const layerThickness = Math.abs(this.noise(x / 75, z / 75, 50)) * 15;
         const height = Math.floor(
           this.noise(x / 25, z / 25, 0) ** 2 * 64 + mountains
         );
@@ -77,8 +79,9 @@ export default class OverworldGenerator
         }
       }
     }
+    performance.mark(`generating-chunk-${chunkX}:${chunkY}:${chunkZ}-end`);
 
-    return chunk.data;
+    return chunk;
   }
 }
 

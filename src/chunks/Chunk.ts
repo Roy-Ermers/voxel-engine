@@ -6,7 +6,8 @@ export type ChunkDataType = Uint8Array;
 
 const CHUNK_HEIGHT_MAP_CACHE = new WeakMap<Chunk, Uint8Array>();
 export default class Chunk {
-  data: ChunkDataType;
+  sharedData: SharedArrayBuffer;
+  private data: ChunkDataType;
 
   id: IDType;
 
@@ -26,13 +27,15 @@ export default class Chunk {
 
   constructor(id: IDType, data?: Uint8Array) {
     this.id = id;
-    this.data = data ?? new Uint8Array(Chunk.size ** 3);
-  }
+    this.sharedData = new SharedArrayBuffer(Chunk.size ** 3);
+    this.data = new Uint8Array(this.sharedData);
 
-  [Symbol.species] = Array;
-
-  [Symbol.iterator]() {
-    return this.data[Symbol.iterator]();
+    if (data) {
+      // store data using atomics
+      for (let i = 0; i < data.length; i++) {
+        Atomics.store(this.data, i, data[i]);
+      }
+    }
   }
 
   markDirty() {
@@ -118,14 +121,29 @@ export default class Chunk {
 
     if (offset === -1) return;
 
-    this.data[offset] = typeof id === "string" ? BlockList.getId(id) : id;
+    const blockId = typeof id === "string" ? BlockList.getId(id) : id;
+    Atomics.store(this.data, offset, blockId);
   }
 
   public getBlockId(x: number, y: number, z: number) {
     const offset = Chunk.computeBlockOffset(x, y, z);
     if (offset === -1) return 0;
 
-    return this.data[offset] ?? 0;
+    return Atomics.load(this.data, offset);
+  }
+
+  public getIndex(index: number) {
+    return Atomics.load(this.data, index);
+  }
+
+  public setIndex(index: number, value: number) {
+    Atomics.store(this.data, index, value);
+  }
+
+  public setChunkData(chunk: Chunk) {
+    for (let i = 0; i < this.data.length; i++) {
+      Atomics.store(this.data, i, chunk.getIndex(i));
+    }
   }
 
   public getBlockIdentifier(x: number, y: number, z: number) {

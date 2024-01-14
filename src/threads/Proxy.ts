@@ -56,13 +56,14 @@ export default class Proxy<t extends Record<string, any>> {
           try {
             const returnValue = await func.call(this.object, ...data.arguments);
 
-            const returnMessage = {
+            const returnMessage = PacketEncoder.encode({
               type: "returnData",
               function: data.function,
               value: returnValue,
               timestamp: data.timestamp,
-            };
-            worker.postMessage(PacketEncoder.encode(returnMessage));
+            });
+
+            worker.postMessage(returnMessage.data, returnMessage.shared);
           } catch (e) {}
         }
       }
@@ -84,14 +85,14 @@ export default class Proxy<t extends Record<string, any>> {
       throw new Error("This function can only be called in a worker thread");
     }
 
-    const packet = {
+    const packet = PacketEncoder.encode({
       type: "proxyFunctionCall",
       proxyId: this._id,
       function: functionName,
       arguments: args,
       timestamp: Date.now(),
-    };
+    });
 
-    self.postMessage(PacketEncoder.encode(packet));
+    self.postMessage(packet.data, packet.shared);
   }
 }

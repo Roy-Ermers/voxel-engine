@@ -1,5 +1,5 @@
 export default {
-  chunkSize: 32,
-  renderDistance: 1,
+  chunkSize: 16,
+  renderDistance: 4,
   textureSize: 16,
 };

@@ -23,10 +23,8 @@ export default class TerrainPass implements ChunkPass {
   }
 
   async process(chunk: Chunk) {
-    const data = await this.chunkGenerator.generateChunk(...chunk.position);
+    const chunkData = await this.chunkGenerator.generateChunk(...chunk.position);
 
-    for (let i = 0; i < data.length; i++) {
-      if (chunk.data[i] === 0) chunk.data[i] = data[i];
-    }
+    chunk.setChunkData(chunkData);
   }
 }

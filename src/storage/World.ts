@@ -327,8 +327,8 @@ export default class World extends Thread<ChunkMeshManager> {
   private async createChunkMesh(chunk: Chunk): Promise<void>;
   private async createChunkMesh(chunk: Chunk | IDType) {
     chunk = typeof chunk === "string" ? this.getOrCreateChunk(chunk) : chunk;
-
     const mesh = await this.generateChunkMesh(chunk);
+    this.log("Created chunk mesh", chunk.id);
     this.meshManager.call("addChunk", chunk, mesh);
   }
 
@@ -386,7 +386,6 @@ export default class World extends Thread<ChunkMeshManager> {
   }
 
   public onPlayerMove(x: number, y: number, z: number) {
-    if (1 === 1) return;
     const renderDistance = Math.ceil(config.renderDistance / 2);
     // If the player has moved to a new chunk, we need to load the surrounding chunks.
     for (let offsetX = -renderDistance; offsetX <= renderDistance; offsetX++) {

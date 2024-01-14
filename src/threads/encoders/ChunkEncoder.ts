@@ -4,14 +4,17 @@ import Encoder from "../Encoder";
 export default class ChunkEncoder implements Encoder<Chunk> {
   encode(data: Chunk) {
     return {
-      id: data.id,
-      data: [...data.data],
-      dirty: data.dirty,
-      currentPass: data.currentPass,
+      shared: [],
+      data: {
+        id: data.id,
+        data: data.sharedData,
+        dirty: data.dirty,
+        currentPass: data.currentPass,
+      }
     };
   }
 
-  decode(data: ReturnType<this["encode"]>): Chunk {
+  decode(data: ReturnType<this["encode"]>["data"], shared: ReturnType<this["encode"]>["shared"]): Chunk {
     const chunk = new Chunk(data.id, new Uint8Array(data.data));
 
     chunk.currentPass = data.currentPass;

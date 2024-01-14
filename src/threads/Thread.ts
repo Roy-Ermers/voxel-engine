@@ -38,6 +38,7 @@ type ThreadMessage =
     };
 
 let isInitialized = false;
+
 export default class Thread<
   p extends Record<keyof p, (...args: any[]) => any> = {}
 > {
@@ -72,7 +73,8 @@ export default class Thread<
         }
       }
 
-      worker.postMessage(PacketEncoder.encode(constructor));
+      const packet = PacketEncoder.encode(constructor);
+      worker.postMessage(packet.data, packet.shared);
 
       worker.addEventListener("error", (e) => console.error(e));
       worker.addEventListener("messageerror", (e) => console.error(e));
@@ -140,7 +142,8 @@ export default class Thread<
             timestamp,
           };
 
-          worker.postMessage(PacketEncoder.encode(callMessage));
+          const packet = PacketEncoder.encode(callMessage);
+          worker.postMessage(packet.data, packet.shared);
         });
       };
     }
@@ -178,6 +181,7 @@ export default class Thread<
   private addEventListeners() {
     self.onmessage = async ({ data }) => {
       const message: ThreadMessage = PacketEncoder.decode(data);
+
       if (message.type == "functionCall") {
         try {
           // @ts-ignore
@@ -192,7 +196,8 @@ export default class Thread<
             timestamp: message.timestamp,
           };
 
-          self.postMessage(PacketEncoder.encode(response));
+          const packet = PacketEncoder.encode(response);
+          self.postMessage(packet.data, packet.shared);
         } catch (e) {
           console.error(`[${this.constructor.name}]`, e);
         }
@@ -220,6 +225,7 @@ export default class Thread<
       value: { name: this.constructor.name, functions },
     };
 
-    self.postMessage(PacketEncoder.encode(signatures));
+    const packet = PacketEncoder.encode(signatures);
+    self.postMessage(packet.data, packet.shared);
   }
 }

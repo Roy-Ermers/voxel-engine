@@ -11,6 +11,6 @@ export default class TestPass implements ChunkPass {
   }
 
   async process(chunk: Chunk) {
-    chunk.data.set([2], 16);
+    chunk.setIndex(0, 3);
   }
 }
